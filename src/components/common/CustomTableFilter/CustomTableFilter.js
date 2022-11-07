@@ -227,6 +227,7 @@ function CustomTableFilter(props) {
       anchor="right"
       BackdropProps={{ invisible: true }}
       open={isFilterOpen}
+      onClose={() => setIsFilterOpen(false)}
     >
       <Grid
         container
