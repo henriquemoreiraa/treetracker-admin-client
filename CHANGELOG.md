@@ -1,3 +1,31 @@
+## [1.117.1](https://github.com/Greenstand/treetracker-admin-client/compare/v1.117.0...v1.117.1) (2022-12-02)
+
+
+### Bug Fixes
+
+* calling click handler with event to allow multiple selection again ([c79464b](https://github.com/Greenstand/treetracker-admin-client/commit/c79464bf8be7effcd3a63ce9fb242ccb98fe8e05))
+
+# [1.117.0](https://github.com/Greenstand/treetracker-admin-client/compare/v1.116.0...v1.117.0) (2022-12-02)
+
+
+### Features
+
+* extend use of state object to Verify Filter for consistency ([c1081a6](https://github.com/Greenstand/treetracker-admin-client/commit/c1081a6af215c85baa15d90bde1eff6bddb85b89))
+
+# [1.116.0](https://github.com/Greenstand/treetracker-admin-client/compare/v1.115.0...v1.116.0) (2022-12-01)
+
+
+### Features
+
+* update verify filter, growers,  and grower detail to use new microservice ([#955](https://github.com/Greenstand/treetracker-admin-client/issues/955)) ([058c36d](https://github.com/Greenstand/treetracker-admin-client/commit/058c36dd9fb7e8d7b297a76ae11047fdb7aecd90))
+
+# [1.115.0](https://github.com/Greenstand/treetracker-admin-client/compare/v1.114.2...v1.115.0) (2022-11-19)
+
+
+### Features
+
+* add copy button capture uuid ([#940](https://github.com/Greenstand/treetracker-admin-client/issues/940)) ([d0d4873](https://github.com/Greenstand/treetracker-admin-client/commit/d0d4873b2d3784526b23c98b58066b7963c2b896))
+
 ## [1.114.2](https://github.com/Greenstand/treetracker-admin-client/compare/v1.114.1...v1.114.2) (2022-11-14)
 
 
