@@ -1,8 +1,9 @@
-import React, { useState, useEffect, createContext } from 'react';
-import axios from 'axios';
-import { getOrganization } from '../api/apiUtils';
-import { session } from '../models/auth';
-import FilterModel from '../models/Filter';
+import React, { useContext, useState, useEffect, createContext } from 'react';
+import FilterModel, { ALL_ORGANIZATIONS } from '../models/Filter';
+import api from '../api/treeTrackerApi';
+// import { captureStatus } from '../common/variables';
+import { AppContext } from './AppContext.js';
+import { setOrganizationFilter } from '../common/utils';
 
 import * as loglevel from 'loglevel';
 const log = loglevel.getLogger('../context/CapturesContext');
@@ -11,6 +12,7 @@ export const CapturesContext = createContext({
   isLoading: false,
   captures: [],
   captureCount: 0,
+  capture: {},
   page: 0,
   rowsPerPage: 25,
   order: 'desc',
@@ -20,93 +22,100 @@ export const CapturesContext = createContext({
   setPage: () => {},
   setOrder: () => {},
   setOrderBy: () => {},
-  queryCapturesApi: () => {},
-  getCaptureCount: () => {},
-  getCapturesAsync: () => {},
+  setCapture: () => {},
+  getCaptures: () => {},
+  getCapture: () => {},
   getAllCaptures: () => {},
   updateFilter: () => {},
 });
 
 export function CapturesProvider(props) {
+  const { orgId, orgList } = useContext(AppContext);
   const [captures, setCaptures] = useState([]);
   const [captureCount, setCaptureCount] = useState(0);
+  const [capture, setCapture] = useState({});
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [order, setOrder] = useState('desc');
-  const [orderBy, setOrderBy] = useState('timeCreated');
+  const [orderBy, setOrderBy] = useState('created_at');
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState(
-    new FilterModel({
-      verifyStatus: [
-        { active: true, approved: true },
-        { active: true, approved: false },
-      ],
-    })
+    new FilterModel({ organization_id: ALL_ORGANIZATIONS })
   );
 
   useEffect(() => {
-    getCapturesAsync();
-    getCaptureCount();
-  }, [filter, rowsPerPage, page, order, orderBy]);
+    const abortController = new AbortController();
+    // orgId can be either null or an [] of uuids
+    if (orgId !== undefined) {
+      getCaptures({ signal: abortController.signal });
+    }
+    return () => abortController.abort();
+  }, [filter, rowsPerPage, page, order, orderBy, orgId]);
 
-  // EVENT HANDLERS
-  const queryCapturesApi = ({
-    id = null,
-    count = false,
-    paramString = null,
-  }) => {
-    const query = `${
-      process.env.REACT_APP_API_ROOT
-    }/api/${getOrganization()}trees${count ? '/count' : ''}${
-      id != null ? '/' + id : ''
-    }${paramString ? '?' + paramString : ''}`;
+  const getCaptures = async (abortController) => {
+    log.debug('4 - load captures', filter);
 
-    return axios.get(query, {
-      headers: {
-        'content-type': 'application/json',
-        Authorization: session.token,
-      },
-    });
-  };
+    //set correct values for organization_id, an array of uuids for ALL_ORGANIZATIONS or a uuid string if provided
+    const finalFilter = setOrganizationFilter(filter, orgId, orgList);
 
-  const getCaptureCount = async () => {
-    log.debug('load capture count');
-    const paramString = `where=${JSON.stringify(filter.getWhereObj())}`;
-    const response = await queryCapturesApi({
-      count: true,
-      paramString,
-    });
-    const { count } = response.data;
-    setCaptureCount(Number(count));
-  };
-
-  const getCapturesAsync = async () => {
-    log.debug('4 - load captures');
     const filterData = {
-      where: filter.getWhereObj(),
-      order: [`${orderBy} ${order}`],
+      filter: new FilterModel(finalFilter),
+      order_by: orderBy,
+      order,
       limit: rowsPerPage,
-      skip: page * rowsPerPage,
+      offset: page * rowsPerPage,
     };
-    const paramString = `filter=${JSON.stringify(filterData)}`;
+
+    // status is not allowed by api because all captures should be "approved"
+    if (filterData.status) {
+      delete filterData.status;
+    }
+
     setIsLoading(true);
-    const response = await queryCapturesApi({ paramString });
+    const response = await api.getCaptures(filterData, abortController);
     setIsLoading(false);
-    setCaptures(response.data);
+    setCaptures(response?.captures);
+    setCaptureCount(Number(response?.total));
   };
 
   // GET CAPTURES FOR EXPORT
   const getAllCaptures = async () => {
     log.debug('load all captures for export');
+    //set correct values for organization_id, an array of uuids for ALL_ORGANIZATIONS or a uuid string if provided
+    const finalFilter = setOrganizationFilter(
+      filter.getWhereObj(),
+      orgId,
+      orgList
+    );
+
     const filterData = {
-      where: filter.getWhereObj(),
+      filter: new FilterModel(finalFilter),
       order: [`${orderBy} ${order}`],
       limit: 20000,
     };
 
-    const paramString = `filter=${JSON.stringify(filterData)}`;
-    const response = await queryCapturesApi({ paramString });
-    return response;
+    // status is not allowed by api because all captures should be "approved"
+    if (filterData.status) {
+      delete filterData.status;
+    }
+
+    const { captures } = await api.getCaptures(filterData);
+    return captures;
+  };
+
+  const getCapture = (id) => {
+    setIsLoading(true);
+
+    api
+      .getCaptureById(`${process.env.REACT_APP_QUERY_API_ROOT}/v2/captures`, id)
+      .then((res) => {
+        setIsLoading(false);
+        setCapture(res);
+      })
+      .catch((err) => {
+        setIsLoading(false);
+        log.error(`ERROR: FAILED TO GET SELECTED CAPTURE ${err}`);
+      });
   };
 
   const updateFilter = async (filter) => {
@@ -124,6 +133,7 @@ export function CapturesProvider(props) {
   const value = {
     captures,
     captureCount,
+    capture,
     page,
     rowsPerPage,
     order,
@@ -135,9 +145,9 @@ export function CapturesProvider(props) {
     setPage,
     setOrder,
     setOrderBy,
-    queryCapturesApi,
-    getCaptureCount,
-    getCapturesAsync,
+    getCaptures,
+    getCapture,
+    setCapture,
     getAllCaptures,
     updateFilter,
   };

@@ -13,7 +13,7 @@ import {
   FormControlLabel,
   LinearProgress,
 } from '@material-ui/core';
-import { CapturesContext } from '../context/CapturesContext';
+import { CapturesContext } from 'context/CapturesContext';
 import { CSVLink } from 'react-csv';
 import { formatCell } from './Captures/CaptureTable';
 
@@ -32,14 +32,7 @@ const useStyle = makeStyles((theme) => ({
 }));
 
 const ExportCaptures = (props) => {
-  const {
-    isOpen,
-    handleClose,
-    columns,
-    filter,
-    speciesLookup,
-    captureTagLookup,
-  } = props;
+  const { isOpen, handleClose, columns, filter, speciesLookup } = props;
   const classes = useStyle();
   let nameColumns = {};
   columns.forEach(({ attr, renderer }) => {
@@ -69,22 +62,21 @@ const ExportCaptures = (props) => {
 
   function processDownloadData(captures, selectedColumns) {
     return captures.map((capture) => {
-      let formatCapture = {};
+      let formattedCapture = {};
       Object.keys(selectedColumns).forEach((attr) => {
-        if (['id', 'planterId', 'imageUrl'].includes(attr)) {
-          formatCapture[attr] = capture[attr];
+        if (['id', 'grower_account_id', 'imageUrl'].includes(attr)) {
+          formattedCapture[attr] = capture[attr];
         } else {
           const renderer = selectedColumns[attr].renderer;
-          formatCapture[attr] = formatCell(
+          formattedCapture[attr] = formatCell(
             capture,
             speciesLookup,
-            captureTagLookup[capture.id] || [],
             attr,
             renderer
           );
         }
       });
-      return formatCapture;
+      return formattedCapture;
     });
   }
 
@@ -95,7 +87,7 @@ const ExportCaptures = (props) => {
     );
     const selectedColumns = Object.fromEntries(filterColumns);
     let response = await capturesContext.getAllCaptures({ filter });
-    let data = await processDownloadData(response.data, selectedColumns);
+    let data = await processDownloadData(response, selectedColumns);
     setDownloadData(data);
     setLoading(false);
   }

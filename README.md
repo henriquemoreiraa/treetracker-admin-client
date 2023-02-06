@@ -7,6 +7,7 @@ This is the React web frontend of the Admin Panel, built with [create-react-app]
 The legacy Admin Panel API is managed separately under [Greenstand/treetracker-admin-api](https://github.com/Greenstand/treetracker-admin-api). The API specification is (partially) documented in OpenAPI format: [treetracker-admin.v1.yaml](https://github.com/Greenstand/treetracker-admin-api/blob/master/docs/api/spec/treetracker-admin.v1.yaml)
 
 The Admin Panel project is in the process of migrating away from a single, dedicated API to use the latest Greenstand microservices, including:
+
 - [Greenstand/treetracker-api](https://github.com/Greenstand/treetracker-api)
 - [Greenstand/treetracker-earnings-api](https://github.com/Greenstand/treetracker-earnings-api)
 - [Greenstand/treetracker-field-data](https://github.com/Greenstand/treetracker-field-data)
@@ -38,17 +39,14 @@ See https://git-scm.com/downloads for instructions.
 
 ### Step 2: Install Node.js
 
-_Node.js version 16.x works best for now; later versions have exhibited some strange behaviour with this project.
-If you encounter issues with the server, check your version of Node.js first. This includes CORS related issues when fetching the API._
-
 We recommend using [nvm](https://github.com/nvm-sh/nvm) to install and manage your Node.js instances. More details here: https://www.sitepoint.com/quick-tip-multiple-versions-node-nvm/
 
 1. Make sure a profile exists for your terminal, run `touch ~/.profile; touch ~/.zshrc`
 2. Install nvm: `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash`
-3. Install the latest version of Node.js 16: `nvm install 16`
-4. Use the installed Node.js: `nvm use 16`
+3. Install the latest version of Node.js 18: `nvm install 18`
+4. Use the installed Node.js: `nvm use 18`
 
-Alternatively, you can install Node.js directly from https://nodejs.org/dist/latest-v16.x/
+Alternatively, you can install Node.js directly from https://nodejs.org/dist/latest-v18.x/
 
 _On MacOS, you can alleviate the need to run as sudo by using nvm or by [following John Papa's instructions](http://jpapa.me/nomoresudo)._
 
@@ -100,7 +98,7 @@ Valid login credentials for the Admin Panel within the development environment c
 ## Getting an Issue Assigned
 
 1. Look through the [open issues](https://github.com/Greenstand/treetracker-admin-client/issues) for one that looks interesting.
-Use labels to look for [good first issues](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), or to filter by size: you could start [small](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22size%3A+small%22), or get your teeth into something more substantial ([medium](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22size%3A+medium%22) or [large](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22size%3A+large%22)).
+   Use labels to look for [good first issues](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), or to filter by size: you could start [small](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22size%3A+small%22), or get your teeth into something more substantial ([medium](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22size%3A+medium%22) or [large](https://github.com/Greenstand/treetracker-admin-client/issues?q=is%3Aissue+is%3Aopen+label%3A%22size%3A+large%22)).
 2. If you're not sure what to work on, ask in the #admin_panel_chat channel on Slack and we'll find a good issue for you.
 3. Add a comment to the selected issue to say you'd like to work on it, and ask for any clarification you need. Some of the info you need to solve the problem may be missing from the description of the issue.
 4. One of the Greenstand leads will then assign it to you and try to help with any questions.
@@ -284,122 +282,6 @@ npm run storybook
 Visit this URL in the browser: http://localhost:9009
 
 All the stories are located at `./src/stories/`
-
-## Advanced local development using docker _## Currently broken ##_
-
-For developers familiar with docker, we offer a dockerized setup for local development.
-
-To run docker on a local machine, you will have to install Docker first.
-Docker is a linux container technology, so running it on Mac or Windows requires an application with an attached linux VM.
-Docker provides one for each OS by default.
-
-### Mac
-
-Install Docker for Mac using homebrew, using the following command
-
-```
-$ brew cask install docker
-```
-
-You can alternatively install Docker via: [Docker for Mac](https://docs.docker.com/docker-for-mac/install/)
-
-Once Docker is installed, lauch Docker from the Applications GUI.
-
-### Windows
-
-For most versions of Windows: [Docker for Windows](https://docs.docker.com/docker-for-windows/install/)
-
-For some older versions or Win10 Home: [Docker Toolbox](https://docs.docker.com/toolbox/toolbox_install_windows/).
-At least on one machine, to get this to work, when you get to the step to do QuickStart terminal script, instead, run:
-
-```
-docker-machine create default --virtualbox-no-vtx-check
-```
-
-then re-run the QuickStart terminal script.
-
-> If you use Docker Toolbox, check the IP address in the output of the QuickStart terminal script.
-> You will use this IP address later instead of `localhost`.
-
-### Linux
-
-To install on linux, you can run
-`sudo apt-get install -y docker-ce`
-but there is [additional setup](https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository) to verify keys, etc.
-
-### Install, build docker containers and go
-
-Run the setup script. This script installs node modules, builds docker containers, and starts them
-
-```
-./dev/scripts/setup.sh
-```
-
-You can now view the Treetracker Admin Panel at http://localhost:8080.
-
-> Note: If you try to access the site on port 3001 you will recieve a CORS error
-
-> Note: If you used Docker Toolbox, you may need to use the IP address it reported, such as http://192.168.99.100:8080_
-
-It may take a few seconds for the web and api servers to come up. You can monitor them using the docker logs commands as:
-
-```
-docker logs -f treetracker-admin-web
-docker logs -f treetracker-admin-api
-```
-
-Also see [Scripts](#scripts) below
-
-The REST API documentation can be viewed and explored by visiting http://localhost:3000/api/explorer
-
-To stop the dev environment use
-
-```
-./dev/scripts/down.sh
-```
-
-To start the dev environment back up use
-
-```
-./dev/scripts/up.sh
-```
-
-Just edit as you normally would to view changes in your development environment.
-
-### Alternative setup for MS Windows (Works on Linux and Mac also)
-
-On Windows the easiest way to develop and debug Node.js applications is using Visual Studio Code.
-It comes with Node.js support out of the box.
-
-https://code.visualstudio.com/docs
-
-### Still can not figure it out?
-
-Here is our [wiki page for troubleshooting](https://github.com/Greenstand/treetracker-admin/wiki/Set-Up-Issues), take a look.
-
-Help us to improve it by adding your experience solving this problem.
-
-### Scripts
-
-Useful scripts are contained in /dev/scripts. Their uses are described here. Scripts are run from the repository root as /dev/scripts/{script-name}.sh
-
-**install.sh** install or update npm modules for server and client projects
-
-**build.sh** build docker images
-
-**up.sh** bring up docker containers in docker as described by docker-compose.yml
-
-**setup.sh** run install.sh, build.sh, and up.sh
-
-**down.sh** bring down docker containers
-
-**logs-api.sh** show logs for api server
-
-**logs-web.sh** show logs for React.js dev server
-
-**docker-clear-images.sh** clear out _all_ docker images
-
-**docker-remove-containers.sh** clear out _all_ docker containers
 
 ## Further reading
 

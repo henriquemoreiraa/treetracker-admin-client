@@ -47,16 +47,12 @@ function FilterTopGrower(props) {
   const [personId, setPersonId] = useState(filter?.personId || '');
   const [firstName, setFirstName] = useState(filter?.firstName || '');
   const [lastName, setLastName] = useState(filter?.lastName || '');
-  const [organizationId, setOrganizationId] = useState(
-    filter?.organizationId || ALL_ORGANIZATIONS
-  );
-  const [stakeholderUUID, setStakeholderUUID] = useState(
-    filter?.stakeholderUUID || ALL_ORGANIZATIONS
-  );
+  const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [email, setEmail] = useState(filter?.email || '');
   const [phone, setPhone] = useState(filter?.phone || '');
+  const [wallet, setWallet] = useState(filter?.wallet || '');
   const [deviceIdentifier, setDeviceIdentifier] = useState(
-    filter?.deviceIdentifier || ''
+    filter?.device_identifier || ''
   );
 
   function handleSubmit(e) {
@@ -66,10 +62,11 @@ function FilterTopGrower(props) {
       id,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      organizationId: stakeholderUUID,
+      organization_id: organizationId,
       email: email.trim(),
       phone: phone.trim(),
-      deviceIdentifier,
+      device_identifier: deviceIdentifier.trim(),
+      wallet: wallet.trim(),
     });
     props.onSubmit && props.onSubmit(filter);
   }
@@ -80,10 +77,10 @@ function FilterTopGrower(props) {
     setFirstName('');
     setLastName('');
     setOrganizationId(ALL_ORGANIZATIONS);
-    setStakeholderUUID(ALL_ORGANIZATIONS);
     setEmail('');
     setPhone('');
     setDeviceIdentifier('');
+    setWallet('');
 
     const filter = new FilterModel();
     props.onSubmit && props.onSubmit(filter);
@@ -132,8 +129,7 @@ function FilterTopGrower(props) {
               <SelectOrg
                 orgId={organizationId}
                 handleSelection={(org) => {
-                  setStakeholderUUID(org.stakeholder_uuid);
-                  setOrganizationId(org.id);
+                  setOrganizationId(org.stakeholder_uuid);
                 }}
               />
               <TextField
@@ -154,6 +150,16 @@ function FilterTopGrower(props) {
                 placeholder="Last Name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                onKeyDown={handleEnterPress}
+              />
+              <TextField
+                className={`${classes.textField} ${classes.filterElement}`}
+                label="Wallet"
+                htmlFor="Wallet"
+                id="Wallet"
+                placeholder="Wallet"
+                value={wallet}
+                onChange={(e) => setWallet(e.target.value)}
                 onKeyDown={handleEnterPress}
               />
               <TextField

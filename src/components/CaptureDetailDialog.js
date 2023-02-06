@@ -12,16 +12,23 @@ import {
   Box,
   Link,
   CircularProgress,
+  Container,
+  Button,
 } from '@material-ui/core';
 import Close from '@material-ui/icons/Close';
 import OptimizedImage from './OptimizedImage';
-import LinkToWebmap from './common/LinkToWebmap';
+import LinkToWebmap, { pathType } from './common/LinkToWebmap';
 import { verificationStates } from '../common/variables';
 import { CaptureDetailContext } from '../context/CaptureDetailContext';
 import CopyNotification from './common/CopyNotification';
 import { CopyButton } from './common/CopyButton';
 import Country from './common/Country';
 import Skeleton from '@material-ui/lab/Skeleton';
+import { captureStatus } from '../common/variables';
+import { hasPermission, POLICIES } from '../models/auth';
+import { AppContext } from '../context/AppContext';
+import theme from './common/theme';
+import log from 'loglevel';
 
 const useStyles = makeStyles((theme) => ({
   chipRoot: {
@@ -32,6 +39,13 @@ const useStyles = makeStyles((theme) => ({
   chip: {
     margin: theme.spacing(0.5),
     fontSize: '0.7rem',
+    '& .MuiChip-deleteIcon': {
+      opacity: '.25',
+      transition: 'opacity .125s',
+    },
+    '&:hover .MuiChip-deleteIcon': {
+      opacity: '1',
+    },
   },
   rejectedChip: {
     backgroundColor: theme.palette.stats.red.replace(/[^,]+(?=\))/, '0.2'), // Change opacity of rgba
@@ -88,14 +102,27 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-function CaptureDetailDialog(props) {
-  const { open, captureId, onClose, page } = props;
+function CaptureDetailDialog({
+  open,
+  captureId,
+  onClose,
+  page,
+  onCaptureTagDelete,
+}) {
   const cdContext = useContext(CaptureDetailContext);
+  const appContext = useContext(AppContext);
+  const hasApproveTreePermission = hasPermission(appContext.user, [
+    POLICIES.APPROVE_TREE,
+    POLICIES.SUPER_PERMISSION,
+  ]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarLabel, setSnackbarLabel] = useState('');
   const [renderCapture, setRenderCapture] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const [captureTagDeletionTarget, setCaptureTagDeletionTarget] = useState(
+    undefined
+  );
   const classes = useStyles();
 
   // This is causing unnecessary re-renders right now, but may be useful if we want to navigate between captures by id
@@ -113,33 +140,7 @@ function CaptureDetailDialog(props) {
     const current = cdContext.capture;
     if (current) {
       // map the keys from legacy to new api keys
-      setRenderCapture({
-        status:
-          current.status ||
-          (current.active && current.approved
-            ? 'approved'
-            : current.active && !current.approved
-            ? 'pending'
-            : 'rejected'),
-        id: current.id || current.uuid,
-        reference_id: current.reference_id || current.id,
-        grower_account_id: current.grower_account_id || current.planterId,
-        wallet: current.wallet || current.planterIdentifier,
-        device_identifier:
-          current.device_identifier || current.deviceIdentifier,
-        image_url: current.image_url || current.imageUrl,
-        lat: current.lat || current.latitude,
-        lon: current.lon || current.longitude,
-        age: current.age,
-        captureApprovalTag: current.captureApprovalTag || null,
-        morphology: current.morphology || null,
-        note: current.note,
-        rejectionReason: current.rejectionReason || null,
-        species_id: current.species_id || current.speciesId,
-        token_id: current.token_id || current.tokenId,
-        created_at: current.created_at || current.timeCreated,
-        updated_at: current.updated_at || current.timeUpdated,
-      });
+      setRenderCapture({ ...current });
     }
     if (isLoading) {
       setIsLoading(false);
@@ -151,23 +152,39 @@ function CaptureDetailDialog(props) {
     setIsLoading(true);
   }, [open]);
 
+  async function handleCaptureTagDeletion({ capture, tag }) {
+    try {
+      await cdContext.deleteCaptureTag({
+        captureId: capture?.id,
+        tagId: tag?.tag_id,
+      });
+
+      onCaptureTagDelete && onCaptureTagDelete();
+    } catch (error) {
+      console.log(error);
+    }
+
+    setCaptureTagDeletionTarget(undefined);
+  }
+
   function handleClose() {
     setSnackbarOpen(false);
     setSnackbarLabel('');
+    setCaptureTagDeletionTarget(undefined);
     cdContext.reset();
     onClose();
   }
 
   function Tags(props) {
     const { capture, species, captureTags } = props;
-    const allTags = [
+    const otherTags = [
       capture.morphology,
       capture.age,
       capture.captureApprovalTag,
       capture.rejectionReason,
-      ...captureTags,
-      // ...captureTags.map((t) => t.name),
     ].filter((tag) => !!tag);
+
+    log.debug('OTHER TAGS', otherTags);
 
     const dateCreated = new Date(Date.parse(capture.created_at));
     function confirmCopy(label) {
@@ -188,7 +205,7 @@ function CaptureDetailDialog(props) {
             <Grid item>
               <Box m={4}>
                 <Typography color="primary" variant="h6">
-                  Capture <LinkToWebmap value={capture} type="tree" />
+                  Capture <LinkToWebmap value={capture} type={pathType.tree} />
                   <CopyButton
                     label="Capture ID"
                     value={capture.reference_id}
@@ -248,7 +265,7 @@ function CaptureDetailDialog(props) {
                       Open in new tab
                     </Link>
                   ) : (
-                    <LinkToWebmap value={item.value} type="user" />
+                    <LinkToWebmap value={item.value} type={pathType.planter} />
                   )
                 ) : item.value ? (
                   item.value
@@ -283,12 +300,14 @@ function CaptureDetailDialog(props) {
           <Typography className={classes.subtitle}>
             Verification Status
           </Typography>
-          {capture.status === 'unprocessed' ? (
+          {capture.status === captureStatus.UNPROCESSED ? (
             <Chip
               label={verificationStates.AWAITING}
               className={classes.awaitingChip}
             />
-          ) : capture.status === 'approved' ? (
+          ) : // Verify will have status of 'approved', Captures and CaptureMatch will have status of 'active' because all captures are approved
+          capture.status === captureStatus.APPROVED ||
+            capture.status === 'active' ? (
             <Chip
               label={verificationStates.APPROVED}
               className={classes.approvedChip}
@@ -315,14 +334,86 @@ function CaptureDetailDialog(props) {
           )}
 
           <Typography variant="subtitle1">Other</Typography>
-          {allTags.length === 0 ? (
+          {otherTags.length + captureTags.length === 0 ? (
             <Typography variant="body1">---</Typography>
           ) : (
-            <div className={classes.chipRoot}>
-              {allTags.map((tag) => (
-                <Chip key={tag} label={tag} className={classes.chip} />
-              ))}
-            </div>
+            <>
+              <div className={classes.chipRoot}>
+                {otherTags.map((tag) => (
+                  <Chip key={tag} label={tag} className={classes.chip} />
+                ))}
+
+                {captureTags.map((tag) => (
+                  <Chip
+                    key={tag.tag_name}
+                    label={tag.tag_name}
+                    className={classes.chip}
+                    onDelete={
+                      hasApproveTreePermission === true
+                        ? () => {
+                            setCaptureTagDeletionTarget({
+                              capture: cdContext.capture,
+                              tag,
+                            });
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+
+              {captureTagDeletionTarget !== undefined && (
+                <>
+                  <Container
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0px',
+                      marginTop: '1em',
+                    }}
+                  >
+                    <Typography>
+                      Remove tag{' '}
+                      <b>{`"${captureTagDeletionTarget.tag?.tag_name}"`}</b> ?
+                    </Typography>
+                  </Container>
+
+                  <Container
+                    style={{
+                      padding: '0px',
+                      display: 'flex',
+                      justifyContent: 'end',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Button
+                      onClick={() => setCaptureTagDeletionTarget(undefined)}
+                      size="small"
+                      style={{
+                        margin: '.5rem',
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        handleCaptureTagDeletion(captureTagDeletionTarget)
+                      }
+                      size="small"
+                      style={{
+                        margin: '.5em',
+                        fontWeight: 'bold',
+                        color: theme.palette.stats.white,
+                        backgroundColor: theme.palette.stats.red,
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Container>
+                </>
+              )}
+            </>
           )}
         </Grid>
         <Divider />

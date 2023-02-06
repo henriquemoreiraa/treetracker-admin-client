@@ -4,9 +4,6 @@ import Grid from '@material-ui/core/Grid';
 import Button from '@material-ui/core/Button';
 import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
-import Checkbox from '@material-ui/core/Checkbox';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
-import ListItemText from '@material-ui/core/ListItemText';
 import Autocomplete from '@material-ui/lab/Autocomplete';
 import SelectOrg from './common/SelectOrg';
 import FilterModel, {
@@ -14,6 +11,9 @@ import FilterModel, {
   SPECIES_ANY_SET,
   SPECIES_NOT_SET,
   ALL_ORGANIZATIONS,
+  ALL_TAGS,
+  TAG_NOT_SET,
+  ANY_TAG_SET,
 } from '../models/Filter';
 import DateFnsUtils from '@date-io/date-fns';
 import {
@@ -26,9 +26,7 @@ import {
   convertDateToDefaultSqlDate,
 } from '../common/locale';
 import {
-  verificationStates,
   tokenizationStates,
-  verificationStatesArr,
   datePickerDefaultMinDate,
 } from '../common/variables';
 import { SpeciesContext } from '../context/SpeciesContext';
@@ -77,102 +75,55 @@ const styles = (theme) => {
 function Filter(props) {
   const speciesContext = useContext(SpeciesContext);
   const tagsContext = useContext(TagsContext);
-  const { classes, filter = new FilterModel() } = props;
+  const { classes, filter } = props;
   const filterOptionAll = 'All';
-  const dateStartDefault = null;
-  const dateEndDefault = null;
+  const startDateDefault = null;
+  const endDateDefault = null;
   const [uuid, setUUID] = useState(filter?.uuid || '');
   const [captureId, setCaptureId] = useState(filter?.captureId || '');
   const [wallet, setWallet] = useState(filter?.wallet || '');
-  const [growerId, setGrowerId] = useState(filter?.planterId || '');
-  const [deviceId, setDeviceId] = useState(filter?.deviceIdentifier || '');
-  const [growerIdentifier, setGrowerIdentifier] = useState(
-    filter?.planterIdentifier || ''
+  const [growerId, setGrowerId] = useState(filter?.grower_account_id || '');
+  const [deviceId, setDeviceId] = useState(filter?.device_identifier || '');
+  const [startDate, setStartDate] = useState(
+    filter?.startDate || startDateDefault
   );
-  const [verifyStatus, setVerifyStatus] = useState([
-    { active: true, approved: true },
-    { active: true, approved: false },
-  ]);
-  const [dateStart, setDateStart] = useState(
-    filter?.dateStart || dateStartDefault
-  );
-  const [dateEnd, setDateEnd] = useState(filter?.dateEnd || dateEndDefault);
+  const [endDate, setEndDate] = useState(filter?.endDate || endDateDefault);
   const [speciesId, setSpeciesId] = useState(filter?.speciesId || ALL_SPECIES);
   const [tag, setTag] = useState(null);
   const [tagSearchString, setTagSearchString] = useState('');
-  const [organizationId, setOrganizationId] = useState(
-    filter.organizationId || ALL_ORGANIZATIONS
-  );
-  const [stakeholderUUID, setStakeholderUUID] = useState(
-    filter.stakeholderUUID || ALL_ORGANIZATIONS
-  );
+  const [organizationId, setOrganizationId] = useState(ALL_ORGANIZATIONS);
   const [tokenId, setTokenId] = useState(filter?.tokenId || filterOptionAll);
-  const [verificationStatus, setVerificationStatus] = useState([
-    verificationStates.APPROVED,
-    verificationStates.AWAITING,
-  ]);
-  const isAllVerification =
-    verificationStatus.length &&
-    verificationStatus.length === verificationStatesArr.length;
 
-  const handleDateStartChange = (date) => {
-    setDateStart(date);
+  const handleStartDateChange = (date) => {
+    setStartDate(date);
   };
 
-  const handleDateEndChange = (date) => {
-    setDateEnd(date);
+  const handleEndDateChange = (date) => {
+    setEndDate(date);
   };
 
   const formatDate = (date) => {
     return convertDateToDefaultSqlDate(date);
   };
 
-  const handleVerificationStatusChange = (event) => {
-    let value = event.target.value;
-    let status = [];
-    if (
-      value[value.length - 1] === 'all' ||
-      (value.length === 3 && value[value.length - 1] !== 'all')
-    ) {
-      setVerificationStatus(
-        verificationStatus.length === verificationStatesArr.length
-          ? []
-          : verificationStatesArr
-      );
-      value = verificationStatesArr;
-    } else {
-      setVerificationStatus(value);
-    }
-    value.forEach((val) => {
-      if (val === verificationStates.APPROVED) {
-        status.push({ active: true, approved: true });
-      } else if (val === verificationStates.AWAITING) {
-        status.push({ active: true, approved: false });
-      } else if (val === verificationStates.REJECTED) {
-        status.push({ active: false, approved: false });
-      }
-    });
-    setVerifyStatus(status);
-  };
-
   function handleSubmit(e) {
     e.preventDefault();
     // save the filer to context for editing & submit
-    const filter = new FilterModel();
-    filter.uuid = uuid;
-    filter.captureId = captureId;
-    filter.planterId = growerId;
-    filter.deviceIdentifier = deviceId;
-    filter.planterIdentifier = growerIdentifier;
-    filter.wallet = wallet;
-    filter.dateStart = dateStart ? formatDate(dateStart) : undefined;
-    filter.dateEnd = dateEnd ? formatDate(dateEnd) : undefined;
-    filter.speciesId = speciesId;
-    filter.tagId = tag ? tag.id : 0;
-    filter.organizationId = organizationId;
-    filter.stakeholderUUID = stakeholderUUID;
-    filter.tokenId = tokenId;
-    filter.verifyStatus = verifyStatus;
+    const test = {
+      uuid: uuid.trim(),
+      captureId: captureId.trim(),
+      grower_account_id: growerId.trim(),
+      device_identifier: deviceId.trim(),
+      wallet: wallet.trim(),
+      startDate: startDate ? formatDate(startDate) : undefined,
+      endDate: endDate ? formatDate(endDate) : undefined,
+      species_id: speciesId,
+      tag_id: tag ? tag.id : undefined,
+      organization_id: organizationId,
+      tokenId: tokenId.trim(),
+    };
+    const filter = new FilterModel(test);
+
     props.onSubmit && props.onSubmit(filter);
   }
 
@@ -182,20 +133,14 @@ function Filter(props) {
     setCaptureId('');
     setGrowerId('');
     setDeviceId('');
-    setGrowerIdentifier('');
     setWallet('');
-    setDateStart(dateStartDefault);
-    setDateEnd(dateEndDefault);
+    setStartDate(startDateDefault);
+    setEndDate(endDateDefault);
     setSpeciesId(ALL_SPECIES);
     setTag(null);
     setTagSearchString('');
     setOrganizationId(ALL_ORGANIZATIONS);
-    setStakeholderUUID(ALL_ORGANIZATIONS);
     setTokenId(filterOptionAll);
-    setVerifyStatus([
-      { active: true, approved: true },
-      { active: true, approved: false },
-    ]);
     const filter = new FilterModel();
     props.onSubmit && props.onSubmit(filter);
   }
@@ -206,44 +151,6 @@ function Filter(props) {
         <form onSubmit={handleSubmit}>
           <Grid container wrap="nowrap" direction="row">
             <Grid item className={classes.inputContainer}>
-              <TextField
-                select
-                htmlFor="verification-status"
-                id="verification-status"
-                label="Verification Status"
-                SelectProps={{
-                  multiple: true,
-                  value: verificationStatus,
-                  onChange: handleVerificationStatusChange,
-                  renderValue: (verificationStatus) =>
-                    verificationStatus.join(', '),
-                }}
-              >
-                <MenuItem value="all">
-                  <ListItemIcon>
-                    <Checkbox
-                      checked={
-                        isAllVerification === 0 ? false : isAllVerification
-                      }
-                      indeterminate={
-                        verificationStatus.length > 0 &&
-                        verificationStatus.length < verificationStatesArr.length
-                      }
-                    />
-                  </ListItemIcon>
-                  <ListItemText primary="Select All" />
-                </MenuItem>
-                {verificationStatesArr.map((name) => (
-                  <MenuItem key={name} value={name}>
-                    <ListItemIcon>
-                      <Checkbox
-                        checked={verificationStatus.indexOf(name) > -1}
-                      />
-                    </ListItemIcon>
-                    <ListItemText primary={name} />
-                  </MenuItem>
-                ))}
-              </TextField>
               <TextField
                 select
                 htmlFor="token-status"
@@ -274,9 +181,9 @@ function Filter(props) {
                   htmlFor="start-date-picker"
                   label="Start Date"
                   format={getDateFormatLocale()}
-                  value={dateStart}
-                  onChange={handleDateStartChange}
-                  maxDate={dateEnd || Date()} // Don't allow selection after today
+                  value={startDate}
+                  onChange={handleStartDateChange}
+                  maxDate={endDate || Date()} // Don't allow selection after today
                   KeyboardButtonProps={{
                     'aria-label': 'change date',
                   }}
@@ -287,9 +194,9 @@ function Filter(props) {
                   htmlFor="end-date-picker"
                   label="End Date"
                   format={getDateFormatLocale()}
-                  value={dateEnd}
-                  onChange={handleDateEndChange}
-                  minDate={dateStart || datePickerDefaultMinDate}
+                  value={endDate}
+                  onChange={handleEndDateChange}
+                  minDate={startDate || datePickerDefaultMinDate}
                   maxDate={Date()} // Don't allow selection after today
                   KeyboardButtonProps={{
                     'aria-label': 'change date',
@@ -306,7 +213,7 @@ function Filter(props) {
               <TextField
                 htmlFor="grower-id"
                 id="grower-id"
-                label="Grower ID"
+                label="Grower Account ID"
                 placeholder="e.g. 2, 7"
                 value={growerId}
                 onChange={(e) => setGrowerId(e.target.value)}
@@ -314,7 +221,7 @@ function Filter(props) {
               <TextField
                 htmlFor="capture-id"
                 id="capture-id"
-                label="Capture ID"
+                label="Capture Reference ID"
                 placeholder="e.g. 80"
                 value={captureId}
                 onChange={(e) => setCaptureId(e.target.value)}
@@ -322,7 +229,7 @@ function Filter(props) {
               <TextField
                 htmlFor="uuid"
                 id="uuid"
-                label="Capture UUID"
+                label="Capture ID (uuid)"
                 placeholder=""
                 value={uuid}
                 onChange={(e) => setUUID(e.target.value)}
@@ -334,14 +241,6 @@ function Filter(props) {
                 placeholder="e.g. 1234abcd"
                 value={deviceId}
                 onChange={(e) => setDeviceId(e.target.value)}
-              />
-              <TextField
-                htmlFor="grower-identifier"
-                id="grower-identifier"
-                label="Grower Identifier"
-                placeholder="e.g. grower@example.com"
-                value={growerIdentifier}
-                onChange={(e) => setGrowerIdentifier(e.target.value)}
               />
               <TextField
                 data-testid="species-dropdown"
@@ -383,6 +282,27 @@ function Filter(props) {
                   inputRoot: classes.autocompleteInputRoot,
                 }}
                 options={[
+                  {
+                    id: ALL_TAGS,
+                    name: 'All',
+                    isPublic: true,
+                    status: 'active',
+                    owner_id: null,
+                  },
+                  {
+                    id: TAG_NOT_SET,
+                    name: 'Not set',
+                    isPublic: true,
+                    status: 'active',
+                    owner_id: null,
+                  },
+                  {
+                    id: ANY_TAG_SET,
+                    name: 'Any tag set',
+                    isPublic: true,
+                    status: 'active',
+                    owner_id: null,
+                  },
                   ...tagsContext.tagList.filter((t) =>
                     t.name
                       .toLowerCase()
@@ -390,17 +310,11 @@ function Filter(props) {
                   ),
                 ]}
                 value={tag}
-                defaultValue={'Not set'}
-                getOptionLabel={(tag) => {
-                  return tag.name;
-                }}
+                defaultValue={'All'}
+                getOptionLabel={(tag) => tag.name}
                 onChange={(_oldVal, newVal) => {
                   //triggered by onInputChange
-                  if (newVal && newVal.name === 'Not set') {
-                    setTag('Not set');
-                  } else {
-                    setTag(newVal);
-                  }
+                  setTag(newVal);
                 }}
                 onInputChange={(_oldVal, newVal) => {
                   setTagSearchString(newVal);
@@ -408,15 +322,12 @@ function Filter(props) {
                 renderInput={(params) => {
                   return <TextField {...params} label="Tag" />;
                 }}
-                // selectOnFocus
-                // clearOnBlur
-                // handleHomeEndKeys
+                getOptionSelected={(option, value) => option.id === value.id}
               />
               <SelectOrg
                 orgId={organizationId}
                 handleSelection={(org) => {
-                  setStakeholderUUID(org.stakeholder_uuid);
-                  setOrganizationId(org.id);
+                  setOrganizationId(org.stakeholder_uuid);
                 }}
               />
             </Grid>

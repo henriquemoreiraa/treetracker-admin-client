@@ -1,4 +1,9 @@
-import { handleResponse, handleError, getOrganization } from './apiUtils';
+import {
+  handleResponse,
+  handleError,
+  getOrganization,
+  makeQueryString,
+} from './apiUtils';
 import { getVerificationStatus } from '../common/utils';
 import { session } from '../models/auth';
 import log from 'loglevel';
@@ -15,16 +20,6 @@ const STATUS_STATES = {
 };
 
 export default {
-  makeQueryString(filterObj) {
-    let arr = [];
-    for (const key in filterObj) {
-      if ((filterObj[key] || filterObj[key] === 0) && filterObj[key] !== '') {
-        arr.push(`${key}=${filterObj[key]}`);
-      }
-    }
-
-    return arr.join('&');
-  },
   /**
    * Verify Tool
    */
@@ -41,6 +36,7 @@ export default {
   ) {
     try {
       const where = filter.getWhereObj();
+
       if (where.active) {
         where.status =
           STATUS_STATES[getVerificationStatus(where.active, where.approved)];
@@ -55,7 +51,7 @@ export default {
       };
 
       const query = `${QUERY_API}/raw-captures${
-        filterObj ? `?${this.makeQueryString(filterObj)}` : ''
+        filterObj ? `?${makeQueryString(filterObj)}` : ''
       }`;
 
       return fetch(query, {
@@ -68,13 +64,13 @@ export default {
       handleError(error);
     }
   },
-  getRawCaptureCount({ filter }, abortController) {
+  getRawCaptureCount({ filter, ...rest }, abortController) {
     try {
       const where = filter.getWhereObj();
-      const filterObj = { ...where };
+      const filterObj = { ...where, ...rest };
 
       const query = `${QUERY_API}/raw-captures/count${
-        filterObj ? `?${this.makeQueryString(filterObj)}` : ''
+        filterObj ? `?${makeQueryString(filterObj)}` : ''
       }`;
 
       return fetch(query, {
@@ -138,16 +134,57 @@ export default {
       handleError(error);
     }
   },
-  getCaptureCount(filter) {
+  /**
+   * Captures
+   */
+
+  getCaptures({ limit = 25, offset = 0, order, filter = {} }) {
     try {
-      const query = `${API_ROOT}/api/${getOrganization()}trees/count?where=${JSON.stringify(
-        filter.getWhereObj()
-      )}`;
+      const where = filter.getWhereObj ? filter.getWhereObj() : {};
+      let filterObj = { ...where, limit, offset, order };
+
+      const query = `${QUERY_API}/v2/captures${
+        filterObj ? `?${makeQueryString(filterObj)}` : ''
+      }`;
+
+      return fetch(query, {
+        headers: {
+          'content-type': 'application/json',
+          Authorization: session.token,
+        },
+      }).then(handleResponse);
+    } catch (error) {
+      handleError(error);
+    }
+  },
+  getCaptureCount(filter, abortController) {
+    try {
+      const where = filter.getWhereObj();
+      const filterObj = { ...where };
+
+      const query = `${QUERY_API}/v2/captures/count${
+        filterObj ? `?${makeQueryString(filterObj)}` : ''
+      }`;
 
       return fetch(query, {
         headers: {
           Authorization: session.token,
         },
+        signal: abortController?.signal,
+      }).then(handleResponse);
+    } catch (error) {
+      handleError(error);
+    }
+  },
+  getCaptureById(url, id, abortController) {
+    try {
+      // use field data api for Verify and query api for Captures
+      const query = `${url}/${id}`;
+      return fetch(query, {
+        headers: {
+          Authorization: session.token,
+        },
+        signal: abortController?.signal,
       }).then(handleResponse);
     } catch (error) {
       handleError(error);
@@ -164,7 +201,7 @@ export default {
 
       const req = `${TREETRACKER_API}/captures?order_by=captured_at&tree_associated=false&limit=${1}&offset=${
         currentPage - 1
-      }&${where}`;
+      }&${where}&matchting_tree_distance=6&matchting_tree_time_range=30`;
 
       return fetch(req, {
         headers: {
@@ -198,20 +235,6 @@ export default {
         headers: {
           Authorization: session.token,
         },
-      }).then(handleResponse);
-    } catch (error) {
-      handleError(error);
-    }
-  },
-  getCaptureById(url, id, abortController) {
-    try {
-      // use field data api for Verify and query api for Captures
-      const query = `${url}/${id}`;
-      return fetch(query, {
-        headers: {
-          Authorization: session.token,
-        },
-        signal: abortController?.signal,
       }).then(handleResponse);
     } catch (error) {
       handleError(error);
@@ -372,12 +395,10 @@ export default {
   /*
    * Tags
    */
-  getTags(abortController) {
+  getTags(orgId, abortController) {
     try {
-      // TODO: order is not allowed as a filter
-      // const filterString = `order=name`;
-      // const query = `${TREETRACKER_API}/tags?${filterString}`;
-      const query = `${TREETRACKER_API}/tags`;
+      const filterString = orgId ? `?owner_id=${orgId}` : '';
+      const query = `${TREETRACKER_API}/tags${filterString}`;
 
       return fetch(query, {
         method: 'GET',
@@ -439,7 +460,7 @@ export default {
       handleError(error);
     }
   },
-  async getCaptureTags({ captureIds = [] }) {
+  async getCaptureTags(captureIds = []) {
     try {
       const result = captureIds.map((id) => {
         const query = `${TREETRACKER_API}/captures/${id}/tags`;
@@ -456,31 +477,22 @@ export default {
       return Promise.all(result);
     } catch (error) {
       handleError(error);
+      return Promise.reject(error);
     }
   },
-  getLegacyCaptureTags({ captureIds, tagIds }) {
+  deleteCaptureTag({ captureId, tagId }) {
     try {
-      const useAnd = captureIds && tagIds;
-      const captureIdClauses = (captureIds || []).map(
-        (id, index) =>
-          `filter[where]${useAnd ? '[and][0]' : ''}[or][${index}][treeId]=${id}`
-      );
-      const tagIdClauses = (tagIds || []).map(
-        (id, index) =>
-          `filter[where][and]${
-            useAnd ? '[and][1]' : ''
-          }[or][${index}][tagId]=${id}`
-      );
-
-      const filterString = [...captureIdClauses, ...tagIdClauses].join('&');
-      const query = `${API_ROOT}/api/tree_tags?${filterString}`;
+      const query = `${TREETRACKER_API}/captures/${captureId}/tags/${tagId}`;
 
       return fetch(query, {
-        method: 'GET',
+        method: 'PATCH',
         headers: {
           'content-type': 'application/json',
           Authorization: session.token,
         },
+        body: JSON.stringify({
+          status: 'deleted',
+        }),
       }).then(handleResponse);
     } catch (error) {
       handleError(error);

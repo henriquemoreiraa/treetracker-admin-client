@@ -15,57 +15,24 @@ import {
 } from '@material-ui/core';
 import { GetApp } from '@material-ui/icons';
 import { getDateTimeStringLocale } from '../../common/locale';
-import { getVerificationStatus } from '../../common/utils';
-import LinkToWebmap from '../common/LinkToWebmap';
+import LinkToWebmap, { pathType } from '../common/LinkToWebmap';
 import { CapturesContext } from '../../context/CapturesContext';
 import { SpeciesContext } from '../../context/SpeciesContext';
 import { CaptureDetailProvider } from '../../context/CaptureDetailContext';
-import { TagsContext } from 'context/TagsContext';
 import CaptureDetailDialog from '../CaptureDetailDialog';
 import CaptureTooltip from './CaptureTooltip';
 import ExportCaptures from 'components/ExportCaptures';
 import Spinner from 'components/common/Spinner';
-import api from '../../api/treeTrackerApi';
 import useStyle from './CaptureTable.styles.js';
 
 const columns = [
   {
-    attr: 'id',
+    attr: 'reference_id',
     label: 'Capture ID',
   },
   {
-    attr: 'planterId',
-    label: 'Grower ID',
-  },
-  {
-    attr: 'deviceIdentifier',
-    label: 'Device Identifier',
-    noSort: false,
-    renderer: (val) => val,
-  },
-  {
-    attr: 'planterIdentifier',
-    label: 'Planter Identifier',
-    noSort: false,
-    renderer: (val) => val,
-  },
-  {
-    attr: 'verificationStatus',
-    label: 'Verification Status',
-    noSort: true,
-    renderer: (val) => val,
-  },
-  {
-    attr: 'speciesId',
-    label: 'Species',
-    noSort: true,
-    renderer: (val) => val,
-  },
-
-  {
-    attr: 'tokenId',
-    label: 'Token ID',
-    renderer: (val) => val,
+    attr: 'grower_account_id',
+    label: 'Grower Acct. ID',
   },
   {
     attr: 'wallet',
@@ -73,9 +40,28 @@ const columns = [
     renderer: (val) => val,
   },
   {
-    attr: 'captureTags',
+    attr: 'device_identifier',
+    label: 'Device Identifier',
+    noSort: false,
+    renderer: (val) => val,
+  },
+  {
+    attr: 'species_id',
+    label: 'Species',
+    noSort: true,
+    renderer: (val) => val,
+  },
+
+  {
+    attr: 'token_id',
+    label: 'Token ID',
+    renderer: (val) => val,
+  },
+  {
+    attr: 'tags',
     label: 'Capture Tags',
     noSort: true,
+    renderer: (val) => val?.join(', '),
   },
   {
     attr: 'note',
@@ -84,7 +70,7 @@ const columns = [
     renderer: (val) => val,
   },
   {
-    attr: 'timeCreated',
+    attr: 'created_at',
     label: 'Created',
     renderer: (val) => getDateTimeStringLocale(val),
   },
@@ -113,6 +99,11 @@ const columns = [
       </Link>
     ),
   },
+  {
+    attr: 'morphology',
+    label: 'Morphology',
+    noSort: true,
+  },
 ];
 
 const CaptureTable = () => {
@@ -129,16 +120,14 @@ const CaptureTable = () => {
     setRowsPerPage,
     setOrder,
     setOrderBy,
+    getCaptures,
   } = useContext(CapturesContext);
   const speciesContext = useContext(SpeciesContext);
-  const tagsContext = useContext(TagsContext);
   const [captureDetail, setCaptureDetail] = useState({
     id: null,
     isDetailsPaneOpen: false,
   });
   const [speciesLookup, setSpeciesLookup] = useState({});
-  const [tagLookup, setTagLookup] = useState({});
-  const [captureTagLookup, setCaptureTagLookup] = useState({});
   const [isOpenExport, setOpenExport] = useState(false);
   const [disableHoverListener, setDisableHoverListener] = useState(false);
   const classes = useStyle();
@@ -147,49 +136,12 @@ const CaptureTable = () => {
     populateSpeciesLookup();
   }, [speciesContext.speciesList]);
 
-  useEffect(() => {
-    populateTagLookup();
-  }, [tagsContext.tagList]);
-
-  const getCaptureTags = async () => {
-    // Don't do anything if there are no captures
-    if (!captures?.length) {
-      return;
-    }
-    // Get the capture tags for all of the displayed captures
-    const captureTags = await api.getCaptureTags({
-      captureIds: captures.map((c) => c.uuid),
-    });
-
-    // Populate a lookup for quick access when rendering the table
-    let lookup = {};
-    captureTags.forEach((captureTag) => {
-      if (!lookup[captureTag.treeId]) {
-        lookup[captureTag.treeId] = [];
-      }
-      lookup[captureTag.treeId].push(tagLookup[captureTag.tagId]);
-    });
-    setCaptureTagLookup(lookup);
-  };
-
-  useEffect(() => {
-    getCaptureTags();
-  }, [captures, tagLookup]);
-
   const populateSpeciesLookup = async () => {
     let species = {};
     speciesContext.speciesList.forEach((s) => {
       species[s.id] = s.name;
     });
     setSpeciesLookup(species);
-  };
-
-  const populateTagLookup = async () => {
-    let tags = {};
-    tagsContext.tagList.forEach((t) => {
-      tags[t.id] = t.name;
-    });
-    setTagLookup(tags);
   };
 
   const toggleDrawer = (id) => {
@@ -278,7 +230,6 @@ const CaptureTable = () => {
             columns={columns}
             filter={filter}
             speciesLookup={speciesLookup}
-            captureTagLookup={captureTagLookup}
           />
           {tablePagination()}
         </Grid>
@@ -337,13 +288,7 @@ const CaptureTable = () => {
                 >
                   {columns.map(({ attr, renderer }, i) => (
                     <TableCell key={`${attr}_${i}`}>
-                      {formatCell(
-                        capture,
-                        speciesLookup,
-                        captureTagLookup[capture.id] || [],
-                        attr,
-                        renderer
-                      )}
+                      {formatCell(capture, speciesLookup, attr, renderer)}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -361,43 +306,24 @@ const CaptureTable = () => {
           open={captureDetail.isDetailsPaneOpen}
           captureId={captureDetail.id}
           onClose={closeDrawer}
-          page={'LEGACY'}
+          page={'CAPTURES'}
+          onCaptureTagDelete={getCaptures}
         />
       </CaptureDetailProvider>
     </Grid>
   );
 };
 
-export const formatCell = (
-  capture,
-  speciesLookup,
-  additionalTags,
-  attr,
-  renderer
-) => {
-  if (attr === 'id' || attr === 'planterId') {
+export const formatCell = (capture, speciesLookup, attr, renderer) => {
+  if (attr === 'reference_id' || attr === 'grower_account_id') {
     return (
       <LinkToWebmap
         value={capture[attr]}
-        type={attr === 'id' ? 'tree' : 'user'}
+        type={attr === 'reference_id' ? pathType.tree : pathType.planter}
       />
     );
-  } else if (attr === 'speciesId') {
+  } else if (attr === 'species_id') {
     return capture[attr] === null ? '--' : speciesLookup[capture[attr]];
-  } else if (attr === 'verificationStatus') {
-    return capture['active'] === null || capture['approved'] === null
-      ? '--'
-      : getVerificationStatus(capture['active'], capture['approved']);
-  } else if (attr === 'captureTags') {
-    return [
-      capture.age,
-      capture.morphology,
-      capture.captureApprovalTag,
-      capture.rejectionReason,
-      ...additionalTags,
-    ]
-      .filter((tag) => tag !== null)
-      .join(', ');
   } else {
     return renderer ? renderer(capture[attr]) : capture[attr];
   }
