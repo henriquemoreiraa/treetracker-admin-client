@@ -145,6 +145,10 @@ export function GrowerProvider(props) {
     return await api.getGrowerSelfies(growerId);
   };
 
+  const uploadGrowerImage = async ({ growerId, file }) => {
+    return await api.uploadGrowerImage({ growerId, file });
+  };
+
   const value = {
     growers,
     pageSize,
@@ -163,6 +167,7 @@ export function GrowerProvider(props) {
     updateFilter,
     getTotalGrowerCount,
     getGrowerSelfies,
+    uploadGrowerImage,
   };
 
   return (

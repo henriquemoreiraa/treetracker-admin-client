@@ -100,8 +100,13 @@ const EditGrower = (props) => {
     return growerUpdate?.[attr] ?? grower?.[attr] ?? '';
   }
 
-  function handleOnSelectFile(e) {
-    console.log(e.target.files[0]);
+  async function handleOnSelectFile(e) {
+    const image = await growerContext.uploadGrowerImage({
+      growerId: grower.id,
+      file: e.target.files[0],
+    });
+
+    console.log('NEW IMAGE HERE!', image);
   }
 
   const inputs = [

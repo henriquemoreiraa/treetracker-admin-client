@@ -1,9 +1,11 @@
 import { handleResponse, handleError, makeQueryString } from './apiUtils';
+import axios from 'axios';
 import { session } from '../models/auth';
 // import log from 'loglevel';
 
 const FIELD_DATA_API = process.env.REACT_APP_FIELD_DATA_API_ROOT;
 const QUERY_API = process.env.REACT_APP_QUERY_API_ROOT;
+const TREETRACKER_API = process.env.REACT_APP_TREETRACKER_API_ROOT;
 
 export default {
   // query legacy api
@@ -82,6 +84,26 @@ export default {
       handleError(error);
     }
   },
+
+  uploadGrowerImage({ growerId, file }) {
+    try {
+      const formData = new FormData();
+      formData.append('grower_account_id', growerId);
+      formData.append('image', file);
+
+      const query = `${TREETRACKER_API}/grower_accounts/image`;
+
+      const headers = {
+        'content-type': 'multipart/form-data',
+        Authorization: session.token,
+      };
+
+      return axios.post(query, formData, { headers }).then(handleResponse);
+    } catch (error) {
+      handleError(error);
+    }
+  },
+
   // const query = `${TREETRACKER_API}/grower_accounts/image`;
   updateGrower(growerUpdate) {
     try {
