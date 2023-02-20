@@ -82,7 +82,7 @@ export default {
       handleError(error);
     }
   },
-
+  // const query = `${TREETRACKER_API}/grower_accounts/image`;
   updateGrower(growerUpdate) {
     try {
       if (growerUpdate.organizationId === 'null') {

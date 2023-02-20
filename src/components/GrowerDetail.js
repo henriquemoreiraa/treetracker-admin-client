@@ -341,7 +341,7 @@ const GrowerDetail = ({ open, growerId, onClose }) => {
                     )}
 
                     <OptimizedImage
-                      src={grower.imageUrl}
+                      src={grower.image_url}
                       width={GROWER_IMAGE_SIZE}
                       height={GROWER_IMAGE_SIZE}
                       className={classes.cardMedia}

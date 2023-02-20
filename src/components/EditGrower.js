@@ -9,7 +9,9 @@ import {
   Grid,
   TextField,
   CircularProgress,
+  Typography,
 } from '@material-ui/core';
+import PublishIcon from '@material-ui/icons/Publish';
 import ImageScroller from './ImageScroller';
 import SelectOrg from './common/SelectOrg';
 import { GrowerContext } from 'context/GrowerContext';
@@ -27,6 +29,13 @@ const useStyle = makeStyles((theme) => ({
   textInput: {
     margin: theme.spacing(2, 0),
     flex: '0 0 49%',
+  },
+  uploadFileInput: {
+    display: 'none',
+  },
+  uploadGrowerImage: {
+    fontWeight: 'bold',
+    paddingLeft: '3px',
   },
 }));
 
@@ -47,8 +56,8 @@ const EditGrower = (props) => {
         setLoadingGrowerImages(false);
 
         setGrowerImages([
-          ...(grower.imageUrl ? [grower.imageUrl] : []),
-          ...(selfies || []).filter((img) => img !== grower.imageUrl),
+          ...(grower.image_url ? [grower.image_url] : []),
+          ...(selfies || []).filter((img) => img !== grower.image_url),
         ]);
       }
     }
@@ -91,6 +100,10 @@ const EditGrower = (props) => {
     return growerUpdate?.[attr] ?? grower?.[attr] ?? '';
   }
 
+  function handleOnSelectFile(e) {
+    console.log(e.target.files[0]);
+  }
+
   const inputs = [
     [
       {
@@ -118,7 +131,7 @@ const EditGrower = (props) => {
         <Grid container direction="column" className={classes.container}>
           <ImageScroller
             images={growerImages}
-            selectedImage={growerUpdate?.imageUrl || grower.imageUrl}
+            selectedImage={growerUpdate?.image_url || grower.image_url}
             loading={loadingGrowerImages}
             blankMessage="No grower images available"
             imageRotation={
@@ -126,6 +139,25 @@ const EditGrower = (props) => {
             }
             onSelectChange={handleChange}
           />
+          <Grid item>
+            <Grid container direction="row" justifyContent="flex-end">
+              <input
+                accept=".png, .jpg, .jpeg, .webp"
+                className={classes.uploadFileInput}
+                onChange={handleOnSelectFile}
+                id="file-upload-button"
+                type="file"
+              />
+              <label htmlFor="file-upload-button">
+                <Button variant="text" color="primary" component="span">
+                  <PublishIcon />
+                  <Typography className={classes.uploadGrowerImage}>
+                    UPLOAD GROWER IMAGE
+                  </Typography>
+                </Button>
+              </label>
+            </Grid>
+          </Grid>
           {inputs.map((row, rowIdx) => (
             <Grid item container direction="row" key={rowIdx}>
               {row.map((input, colIdx) => (
