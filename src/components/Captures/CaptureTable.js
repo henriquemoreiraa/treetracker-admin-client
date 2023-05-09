@@ -31,8 +31,8 @@ const columns = [
     label: 'Capture ID',
   },
   {
-    attr: 'grower_account_id',
-    label: 'Grower Acct. ID',
+    attr: 'grower_reference_id',
+    label: 'Grower Ref. ID',
   },
   {
     attr: 'wallet',
@@ -85,7 +85,7 @@ const columns = [
     renderer: (val) => Number(val).toFixed(6),
   },
   {
-    attr: 'imageUrl',
+    attr: 'image_url',
     label: 'Image URL',
     renderer: (val) => (
       <Link
@@ -139,7 +139,7 @@ const CaptureTable = () => {
   const populateSpeciesLookup = async () => {
     let species = {};
     speciesContext.speciesList.forEach((s) => {
-      species[s.id] = s.name;
+      species[s.uuid] = s.name;
     });
     setSpeciesLookup(species);
   };
@@ -315,7 +315,7 @@ const CaptureTable = () => {
 };
 
 export const formatCell = (capture, speciesLookup, attr, renderer) => {
-  if (attr === 'reference_id' || attr === 'grower_account_id') {
+  if (attr === 'reference_id' || attr === 'grower_reference_id') {
     return (
       <LinkToWebmap
         value={capture[attr]}

@@ -10,7 +10,7 @@ import log from 'loglevel';
 
 // Set API as a variable
 const API_ROOT = process.env.REACT_APP_API_ROOT;
-const FIELD_DATA_API = process.env.REACT_APP_FIELD_DATA_ROOT;
+const FIELD_DATA_API = process.env.REACT_APP_FIELD_DATA_API_ROOT;
 const QUERY_API = process.env.REACT_APP_QUERY_API_ROOT;
 const TREETRACKER_API = process.env.REACT_APP_TREETRACKER_API_ROOT;
 const STATUS_STATES = {
@@ -291,7 +291,12 @@ export default {
           'content-type': 'application/json',
           Authorization: session.token,
         },
-      }).then(handleResponse);
+      })
+        .then(handleResponse)
+        .then((res) => {
+          // log.debug(res);
+          return res?.length ? res[0] : null;
+        });
     } catch (error) {
       handleError(error);
     }
